@@ -1,6 +1,7 @@
 name: Release CI
 
 on: workflow_dispatch
+# on: push
 permissions: write-all
 
 jobs:
@@ -69,7 +70,7 @@ jobs:
           security set-keychain-settings -t 3600 -u tauri-build.keychain
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k tauri-build tauri-build.keychain
           security list-keychain -d user -s /Users/runner/Library/Keychains/login.keychain-db tauri-build.keychain
-          codesign --force -s "${{ secrets.APPLE_SIGNING_IDENTITY }}" --keychain tauri-build.keychain --options runtime target/${{ matrix.target }}/release/clash-verge-service
+          codesign --force -s "${{ secrets.APPLE_SIGNING_IDENTITY }}" --keychain tauri-build.keychain --options runtime target/${{ matrix.target }}/release/desktop-service
           codesign --force -s "${{ secrets.APPLE_SIGNING_IDENTITY }}" --keychain tauri-build.keychain --options runtime target/${{ matrix.target }}/release/install-service
           codesign --force -s "${{ secrets.APPLE_SIGNING_IDENTITY }}" --keychain tauri-build.keychain --options runtime target/${{ matrix.target }}/release/uninstall-service
 
@@ -81,7 +82,7 @@ jobs:
           tag_name: ${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
-            target/${{ matrix.target }}/release/clash-verge-service.exe
+            target/${{ matrix.target }}/release/desktop-service.exe
             target/${{ matrix.target }}/release/install-service.exe
             target/${{ matrix.target }}/release/uninstall-service.exe
 
@@ -93,6 +94,6 @@ jobs:
           tag_name: ${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
-            target/${{ matrix.target }}/release/clash-verge-service
+            target/${{ matrix.target }}/release/desktop-service
             target/${{ matrix.target }}/release/install-service
             target/${{ matrix.target }}/release/uninstall-service

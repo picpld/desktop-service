@@ -135,25 +135,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clash-verge-service"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "interfaces",
- "log",
- "log4rs",
- "once_cell",
- "openssl",
- "parking_lot",
- "serde",
- "serde_json",
- "sysinfo",
- "tokio",
- "warp",
- "windows-service",
-]
-
-[[package]]
 name = "core-foundation-sys"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -218,6 +199,25 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "desktop-service"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "interfaces",
+ "log",
+ "log4rs",
+ "once_cell",
+ "openssl",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tokio",
+ "warp",
+ "windows-service",
 ]
 
 [[package]]

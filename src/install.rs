@@ -13,11 +13,11 @@ fn main() -> Result<(), Error> {
 
     let service_binary_path = std::env::current_exe()
         .unwrap()
-        .with_file_name("clash-verge-service");
+        .with_file_name("desktop-service");
     let target_binary_path = "/Library/PrivilegedHelperTools/io.github.clashverge.helper";
     let target_binary_dir = Path::new("/Library/PrivilegedHelperTools");
     if !service_binary_path.exists() {
-        eprintln!("The clash-verge-service binary not found.");
+        eprintln!("The desktop-service binary not found.");
         std::process::exit(2);
     }
     if !target_binary_dir.exists() {
@@ -76,16 +76,16 @@ fn main() -> Result<(), Error> {
 }
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), Error> {
-    const SERVICE_NAME: &str = "clash-verge-service";
+    const SERVICE_NAME: &str = "desktop-service";
     use std::fs::File;
     use std::io::Write;
     use std::path::Path;
 
     let service_binary_path = std::env::current_exe()
         .unwrap()
-        .with_file_name("clash-verge-service");
+        .with_file_name("desktop-service");
     if !service_binary_path.exists() {
-        eprintln!("The clash-verge-service binary not found.");
+        eprintln!("The desktop-service binary not found.");
         std::process::exit(2);
     }
 
@@ -183,10 +183,10 @@ fn main() -> windows_service::Result<()> {
 
     let service_binary_path = std::env::current_exe()
         .unwrap()
-        .with_file_name("clash-verge-service.exe");
+        .with_file_name("desktop-service.exe");
 
     if !service_binary_path.exists() {
-        eprintln!("clash-verge-service.exe not found");
+        eprintln!("desktop-service.exe not found");
         std::process::exit(2);
     }
 

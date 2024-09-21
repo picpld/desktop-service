@@ -1,3 +1,3 @@
-# Clash Verge Service
+# Desktop Service
 
 A Windows Service.

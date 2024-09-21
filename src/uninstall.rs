@@ -35,7 +35,7 @@ fn main() -> Result<(), Error> {
 fn main() -> Result<(), Error> {
     use std::{fs::remove_file, path::Path};
 
-    const SERVICE_NAME: &str = "clash-verge-service";
+    const SERVICE_NAME: &str = "desktop-service";
 
     // Disable the service
     std::process::Command::new("systemctl")
