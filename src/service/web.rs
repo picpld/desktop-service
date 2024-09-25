@@ -1,15 +1,17 @@
 use super::data::*;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context, Ok, Result};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::fs::File;
+use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
 #[derive(Debug, Default)]
-pub struct ClashStatus {
+pub struct ServerStatus {
     pub info: Option<StartBody>,
+    pub pid: u32,
 }
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -17,11 +19,11 @@ pub struct DNSStatus {
     pub dns: Option<String>,
 }
 
-impl ClashStatus {
-    pub fn global() -> &'static Arc<Mutex<ClashStatus>> {
-        static CLASHSTATUS: OnceCell<Arc<Mutex<ClashStatus>>> = OnceCell::new();
+impl ServerStatus {
+    pub fn global() -> &'static Arc<Mutex<ServerStatus>> {
+        static CLASHSTATUS: OnceCell<Arc<Mutex<ServerStatus>>> = OnceCell::new();
 
-        CLASHSTATUS.get_or_init(|| Arc::new(Mutex::new(ClashStatus::default())))
+        CLASHSTATUS.get_or_init(|| Arc::new(Mutex::new(ServerStatus::default())))
     }
 }
 
@@ -36,71 +38,78 @@ impl DNSStatus {
 
 /// GET /version
 /// 获取服务进程的版本
-pub fn get_version() -> Result<HashMap<String, String>> {
+pub fn version() -> Result<HashMap<String, String>> {
     let version = env!("CARGO_PKG_VERSION");
 
     let mut map = HashMap::new();
 
-    map.insert("service".into(), "Clash Verge Service".into());
+    map.insert("service".into(), "Desktop Service".into());
     map.insert("version".into(), version.into());
 
     Ok(map)
 }
 
-/// POST /start_clash
-/// 启动clash进程
-pub fn start_clash(body: StartBody) -> Result<()> {
-    // stop the old clash bin
-    let _ = stop_clash();
+/// POST /start
+/// 启动进程
+pub fn start(body: StartBody) -> Result<()> {
+    // stop the old server
+    let _ = stop();
 
     let body_cloned = body.clone();
 
-    let config_dir = body.config_dir.as_str();
-
-    let config_file = body.config_file.as_str();
-
-    let args = vec!["-d", config_dir, "-f", config_file];
-
     let log = File::create(body.log_file).context("failed to open log")?;
-    Command::new(body.bin_path).args(args).stdout(log).spawn()?;
+    let result = Command::new(body.bin_path)
+        .args(body.args)
+        .stdout(log)
+        .spawn()?;
 
-    let mut arc = ClashStatus::global().lock();
+    let mut arc = ServerStatus::global().lock();
     arc.info = Some(body_cloned);
+    arc.pid = result.id();
 
     Ok(())
 }
 
-/// POST /stop_clash
-/// 停止clash进程
-pub fn stop_clash() -> Result<()> {
-    let mut arc = ClashStatus::global().lock();
+/// POST /stop
+/// 停止 server 进程
+pub fn stop() -> Result<()> {
+    let mut arc = ServerStatus::global().lock();
 
-    arc.info = None;
+    if arc.info.is_none() {
+        // 没有进程在运行
+        return Ok(());
+    }
 
     let system = System::new_with_specifics(
         RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
     );
-    let procs = system.processes_by_name("verge-mihomo");
+    let bin_path = arc.info.clone().unwrap().bin_path;
+    let filename = Path::new(&bin_path).file_stem().unwrap().to_str().unwrap();
+    let procs = system.processes_by_name(filename);
     for proc in procs {
-        proc.kill();
+        if proc.pid().as_u32() == arc.pid {
+            proc.kill();
+        }
     }
+    arc.info = None;
+    arc.pid = 0;
     Ok(())
 }
 
-/// GET /get_clash
-/// 获取clash当前执行信息
-pub fn get_clash() -> Result<StartBody> {
-    let arc = ClashStatus::global().lock();
+/// GET /info
+/// 获取 server 当前执行信息
+pub fn info() -> Result<StartBody> {
+    let arc = ServerStatus::global().lock();
 
     match arc.info.clone() {
         Some(info) => Ok(info),
-        None => bail!("clash not executed"),
+        None => bail!("server not executed"),
     }
 }
 
 /// POST /set_dns
 /// 设置DNS
-pub fn set_dns() -> Result<()> {
+pub fn set_dns(body: DnsBody) -> Result<()> {
     #[cfg(target_os = "macos")]
     {
         let service = default_network_service().or_else(|_e| default_network_service_by_ns());
@@ -108,24 +117,26 @@ pub fn set_dns() -> Result<()> {
             return Err(e);
         }
         let service = service.unwrap();
-        let output = networksetup()
-            .arg("-getdnsservers")
-            .arg(&service)
-            .output()?;
-        let mut origin_dns = String::from_utf8(output.stdout)?.trim().replace("\n", " ");
-        if origin_dns
-            .trim()
-            .starts_with("There aren't any DNS Servers set on")
-        {
-            origin_dns = "Empty".to_string();
-        }
         let mut arc = DNSStatus::global().lock();
-        arc.dns = Some(origin_dns);
+        if arc.dns.is_none() {
+            let output = networksetup()
+                .arg("-getdnsservers")
+                .arg(&service)
+                .output()?;
+            let mut origin_dns = String::from_utf8(output.stdout)?.trim().replace("\n", " ");
+            if origin_dns
+                .trim()
+                .starts_with("There aren't any DNS Servers set on")
+            {
+                origin_dns = "Empty".to_string();
+            }
+            arc.dns = Some(origin_dns);
+        }
 
         networksetup()
             .arg("-setdnsservers")
             .arg(&service)
-            .arg("223.5.5.5")
+            .arg(body.dns)
             .output()?;
     }
 
@@ -137,7 +148,7 @@ pub fn set_dns() -> Result<()> {
 pub fn unset_dns() -> Result<()> {
     #[cfg(target_os = "macos")]
     {
-        let arc = DNSStatus::global().lock();
+        let mut arc = DNSStatus::global().lock();
 
         let origin_dns = match arc.dns.clone() {
             Some(dns) => dns,
@@ -154,6 +165,8 @@ pub fn unset_dns() -> Result<()> {
                 .arg(service)
                 .arg(origin_dns)
                 .output()?;
+
+            arc.dns = None;
         }
     }
 

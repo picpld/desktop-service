@@ -2,15 +2,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StartBody {
-    pub core_type: Option<String>,
-
     pub bin_path: String,
-
-    pub config_dir: String,
-
-    pub config_file: String,
-
+    pub args: Vec<String>,
     pub log_file: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DnsBody {
+    pub dns: String,
 }
 
 #[derive(Deserialize, Serialize)]

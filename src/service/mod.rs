@@ -7,6 +7,10 @@ use tokio::runtime::Runtime;
 use warp::Filter;
 
 #[cfg(windows)]
+const SERVICE_NAME: &str = "desktop-service";
+const LISTEN_PORT: u16 = 27247;
+
+#[cfg(windows)]
 use std::{ffi::OsString, time::Duration};
 #[cfg(windows)]
 use windows_service::{
@@ -21,8 +25,6 @@ use windows_service::{
 
 #[cfg(windows)]
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
-const SERVICE_NAME: &str = "clash_verge_service";
-const LISTEN_PORT: u16 = 33211;
 
 macro_rules! wrap_response {
     ($expr: expr) => {
@@ -66,41 +68,37 @@ pub async fn run_service() -> anyhow::Result<()> {
         process_id: None,
     })?;
 
-    let api_get_version = warp::get()
+    let api_version = warp::get()
         .and(warp::path("version"))
-        .map(move || wrap_response!(get_version()));
+        .map(move || wrap_response!(version()));
 
-    let api_start_clash = warp::post()
-        .and(warp::path("start_clash"))
+    let api_start = warp::post()
+        .and(warp::path("start"))
         .and(warp::body::json())
-        .map(move |body: StartBody| wrap_response!(start_clash(body)));
+        .map(move |body: StartBody| wrap_response!(start(body)));
 
-    let api_stop_clash = warp::post()
-        .and(warp::path("stop_clash"))
-        .map(move || wrap_response!(stop_clash()));
+    let api_stop = warp::post()
+        .and(warp::path("stop"))
+        .map(move || wrap_response!(stop()));
 
-    let api_get_clash = warp::get()
-        .and(warp::path("get_clash"))
-        .map(move || wrap_response!(get_clash()));
-
-    let api_stop_service = warp::post()
-        .and(warp::path("stop_service"))
-        .map(|| wrap_response!(stop_service()));
+    let api_info = warp::get()
+        .and(warp::path("info"))
+        .map(move || wrap_response!(info()));
 
     let api_set_dns = warp::post()
         .and(warp::path("set_dns"))
-        .map(|| wrap_response!(set_dns()));
+        .and(warp::body::json())
+        .map(move |body: DnsBody| wrap_response!(set_dns(body)));
 
     let api_unset_dns = warp::post()
         .and(warp::path("unset_dns"))
         .map(|| wrap_response!(unset_dns()));
 
     warp::serve(
-        api_get_version
-            .or(api_start_clash)
-            .or(api_stop_clash)
-            .or(api_stop_service)
-            .or(api_get_clash)
+        api_version
+            .or(api_start)
+            .or(api_stop)
+            .or(api_info)
             .or(api_set_dns)
             .or(api_unset_dns),
     )
@@ -110,34 +108,6 @@ pub async fn run_service() -> anyhow::Result<()> {
     Ok(())
 }
 
-// 停止服务
-#[cfg(windows)]
-fn stop_service() -> Result<()> {
-    let status_handle =
-        service_control_handler::register(SERVICE_NAME, |_| ServiceControlHandlerResult::NoError)?;
-
-    status_handle.set_service_status(ServiceStatus {
-        service_type: SERVICE_TYPE,
-        current_state: ServiceState::Stopped,
-        controls_accepted: ServiceControlAccept::empty(),
-        exit_code: ServiceExitCode::Win32(0),
-        checkpoint: 0,
-        wait_hint: Duration::default(),
-        process_id: None,
-    })?;
-
-    Ok(())
-}
-#[cfg(not(windows))]
-fn stop_service() -> anyhow::Result<()> {
-    // systemctl stop clash_verge_service
-    std::process::Command::new("systemctl")
-        .arg("stop")
-        .arg(SERVICE_NAME)
-        .output()
-        .expect("failed to execute process");
-    Ok(())
-}
 /// Service Main function
 #[cfg(windows)]
 pub fn main() -> Result<()> {

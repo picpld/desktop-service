@@ -2,14 +2,21 @@
 fn main() {
     panic!("This program is not intended to run on this platform.");
 }
+
+const SERVICE_NAME: &str = "desktop-service";
+
 #[cfg(not(windows))]
 use anyhow::Error;
 
 #[cfg(target_os = "macos")]
 fn main() -> Result<(), Error> {
+    use regex::Regex;
     use std::{fs::remove_file, path::Path};
 
-    let plist_file = "/Library/LaunchDaemons/io.github.clashverge.helper.plist";
+    let dot_name = Regex::new(r"[\-_]").unwrap().replace_all(SERVICE_NAME, ".");
+
+    let plist_file = format!("/Library/LaunchDaemons/{}.helper.plist", dot_name);
+    let plist_file = &plist_file;
 
     // Unload the service.
     std::process::Command::new("launchctl")
@@ -19,7 +26,9 @@ fn main() -> Result<(), Error> {
         .expect("Failed to unload service.");
 
     // Remove the service file.
-    let service_file = Path::new("/Library/PrivilegedHelperTools/io.github.clashverge.helper");
+    let target_binary_path = format!("/Library/PrivilegedHelperTools/{}.helper", dot_name);
+    let target_binary_path = &target_binary_path;
+    let service_file = Path::new(target_binary_path);
     if service_file.exists() {
         remove_file(service_file).expect("Failed to remove service file.");
     }
@@ -34,8 +43,6 @@ fn main() -> Result<(), Error> {
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), Error> {
     use std::{fs::remove_file, path::Path};
-
-    const SERVICE_NAME: &str = "desktop-service";
 
     // Disable the service
     std::process::Command::new("systemctl")
@@ -72,7 +79,7 @@ fn main() -> windows_service::Result<()> {
     let service_manager = ServiceManager::local_computer(None::<&str>, manager_access)?;
 
     let service_access = ServiceAccess::QUERY_STATUS | ServiceAccess::STOP | ServiceAccess::DELETE;
-    let service = service_manager.open_service("clash_verge_service", service_access)?;
+    let service = service_manager.open_service(SERVICE_NAME, service_access)?;
 
     let service_status = service.query_status()?;
     if service_status.current_state != ServiceState::Stopped {
