@@ -109,7 +109,7 @@ pub fn info() -> Result<StartBody> {
 
 /// POST /set_dns
 /// 设置DNS
-pub fn set_dns(body: DnsBody) -> Result<()> {
+pub fn set_dns(_body: DnsBody) -> Result<()> {
     #[cfg(target_os = "macos")]
     {
         let service = default_network_service().or_else(|_e| default_network_service_by_ns());
@@ -136,7 +136,7 @@ pub fn set_dns(body: DnsBody) -> Result<()> {
         networksetup()
             .arg("-setdnsservers")
             .arg(&service)
-            .arg(body.dns)
+            .arg(_body.dns)
             .output()?;
     }
 

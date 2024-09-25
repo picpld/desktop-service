@@ -7,10 +7,10 @@ const SERVICE_NAME: &str = "desktop-service";
 
 #[cfg(not(windows))]
 use anyhow::Error;
-use regex::Regex;
 
 #[cfg(target_os = "macos")]
 fn main() -> Result<(), Error> {
+    use regex::Regex;
     use std::fs::File;
     use std::io::Write;
     use std::path::Path;
@@ -99,7 +99,10 @@ fn main() -> Result<(), Error> {
         .unwrap()
         .with_file_name(SERVICE_NAME);
     if !service_binary_path.exists() {
-        eprintln!("The {} binary not found.", service_binary_path);
+        eprintln!(
+            "The {} binary not found.",
+            service_binary_path.into_os_string().into_string().unwrap()
+        );
         std::process::exit(2);
     }
 
@@ -200,7 +203,10 @@ fn main() -> windows_service::Result<()> {
         .with_file_name(format!("{}.exe", SERVICE_NAME));
 
     if !service_binary_path.exists() {
-        eprintln!("{} not found", service_binary_path);
+        eprintln!(
+            "{} not found",
+            service_binary_path.into_os_string().into_string().unwrap()
+        );
         std::process::exit(2);
     }
 
