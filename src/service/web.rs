@@ -21,9 +21,9 @@ pub struct DNSStatus {
 
 impl ServerStatus {
     pub fn global() -> &'static Arc<Mutex<ServerStatus>> {
-        static CLASHSTATUS: OnceCell<Arc<Mutex<ServerStatus>>> = OnceCell::new();
+        static SERVERSTATUS: OnceCell<Arc<Mutex<ServerStatus>>> = OnceCell::new();
 
-        CLASHSTATUS.get_or_init(|| Arc::new(Mutex::new(ServerStatus::default())))
+        SERVERSTATUS.get_or_init(|| Arc::new(Mutex::new(ServerStatus::default())))
     }
 }
 

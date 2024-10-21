@@ -44,7 +44,7 @@ fn main() -> Result<(), Error> {
     let plist_file_content = include_str!("files/helper.plist");
     let plist_file_content = Regex::new(r"\{name\}")
         .unwrap()
-        .replace_all(plist_file_content, dot_name);
+        .replace_all(plist_file_content, dot_name.clone());
     let mut file = File::create(plist_file).expect("Failed to create file for writing.");
     file.write_all(plist_file_content.as_bytes())
         .expect("Unable to write plist file");
@@ -83,7 +83,7 @@ fn main() -> Result<(), Error> {
     // Start the service.
     std::process::Command::new("launchctl")
         .arg("start")
-        .arg("io.github.clashverge.helper")
+        .arg(format!("{}.helper", dot_name))
         .output()
         .expect("Failed to load service.");
     Ok(())
